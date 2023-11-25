@@ -1,0 +1,25 @@
+DETECTOR_CONFIG:
+  # The threshold for the IOU score
+  IOU_TH: 0.7
+  # The threshold for the confidence score
+  CONF_TH: 0.25
+  # The size of the image
+  IMAGE_SIZE: 1280
+  # The device to run the detector
+  DEVICE: cpu
+  # F16 precision
+  HALF: False
+  # The path of the yolov6 label file
+  YOLOV6_YAML_FILE: torchyolo/configs/yolov6/coco.yaml
+  # The path of the yolovx config file
+  YOLOX_CONFIG_PATH: configs.yolox.yolox_s
+  # The path of the Hugging Face model
+  HUGGING_FACE_MODEL: False 
+
+DATA_CONFIG:
+  # The path of the output video
+  OUTPUT_PATH: output.mp4
+  # Save the video
+  SHOW: True
+  # Show the video
+  SAVE: True
