@@ -260,10 +260,10 @@ class QuasiDense3DSepUncertainty(nn.Module):
             if det_bboxes.size(0) != 0:
                 #bboxes = det_bboxes * img_meta[0]['scale_factor']
 
-                det_bboxes[:, 0:3:2] *= img_meta[0]['scale_factor']['w']
-                det_bboxes[:, 1:4:2] *= img_meta[0]['scale_factor']['h']
-                det_2dcs[:, 0] *= img_meta[0]['scale_factor']['w']
-                det_2dcs[:, 1] *= img_meta[0]['scale_factor']['h']
+                #det_bboxes[:, 0:3:2] *= img_meta[0]['scale_factor']['w']
+                #det_bboxes[:, 1:4:2] *= img_meta[0]['scale_factor']['h']
+                #det_2dcs[:, 0] *= img_meta[0]['scale_factor']['w']
+                #det_2dcs[:, 1] *= img_meta[0]['scale_factor']['h']
                 bboxes = det_bboxes 
 
                 embed_rois = self.bbox2roi([bboxes])
@@ -432,7 +432,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
                         track.pop(0)
 
                     points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2)) 
-                    cv2.polylines(img, [points], isClosed=False, color=(0, 0, 255), thickness=2)
+                    #cv2.polylines(img, [points], isClosed=False, color=(0, 0, 255), thickness=2)
 
                 #print(f"img.shape={img.shape}")
                 track_bboxes = track_bboxes.numpy()
@@ -451,13 +451,19 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 dims = track_dims.numpy()
                 yaws = match_yaws.numpy()
                 locs = track_corners_cam.numpy()
+                scale_dict = img_meta[0]['scale_factor']
                 for i in range(track_dims.shape[0]):
                     roty = [yaws[i][0]]
-                    dim = track_dims[i]
+                    dim = dims[i]
                     loc = locs[i]
+                    #det_bboxes[:, 0:3:2] *= img_meta[0]['scale_factor']['w']
+                    #det_bboxes[:, 1:4:2] *= img_meta[0]['scale_factor']['h']
+                    #det_2dcs[:, 0] *= img_meta[0]['scale_factor']['w']
+                    #det_2dcs[:, 1] *= img_meta[0]['scale_factor']['h']
+
                     p3ds_camera = computeboxes(roty, dim, loc)
                     cam_pose = None 
-                    draw_3d_bbox(img, p3ds_camera, projection, cam_pose)
+                    draw_3d_bbox(img, p3ds_camera, projection, cam_pose, scale_dict)
 
                 # draw_3d_bbox
                 # get_3d_bbox_vertex

@@ -276,10 +276,30 @@ class BasicBlock(nn.Module):
             dilation=dilation)
         self.bn2 = nn.BatchNorm2d(planes)
         self.stride = stride
+    
+    def padding(self, x, residual):
+        x_w, x_h = x.shape[2:]
+        r_w, r_h = residual.shape[2:]
+        r_w *= 2
+        r_h *= 2
+
+        if x_w > r_w:
+            x_w = r_w 
+        if x_h > r_h:
+            x_h = r_h 
+        
+        nx = x.new_zeros([x.shape[0], x.shape[1], r_w, r_h])
+        nx[:, :, :x_w, :x_h] = x[:, :, :x_w, :x_h]
+
+        return nx 
+
 
     def forward(self, x, residual=None):
         if residual is None:
             residual = x
+        else:
+            if self.stride > 1:
+                x = self.padding(x, residual)
         
         out = self.conv1(x)
         out = self.bn1(out)
@@ -433,6 +453,7 @@ class Tree(nn.Module):
         children = [] if children is None else children
 
         if self.stride > 1:
+            ''' 
             row = x.shape[2]
             col = x.shape[3]
             padding_row = 0
@@ -445,7 +466,8 @@ class Tree(nn.Module):
             downsample = nn.MaxPool2d(self.stride, stride=self.stride, padding=(padding_row, padding_col))
 
             bottom = downsample(x)
-            #bottom = self.downsample(x) if self.downsample else x
+            '''
+            bottom = self.downsample(x) if self.downsample else x
         else:
             bottom = x 
             
@@ -667,6 +689,15 @@ class IDAUp(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
+    def padding(self, x, residual):
+        x_w, x_h = x.shape[2:]
+        r_w, r_h = residual.shape[2:]
+        assert x_w >= r_w and x_h >= r_h 
+        nr = x.new_zeros(x.shape)
+        nr[:, :, :residual.shape[2], :residual.shape[3]] = residual 
+
+        return nr 
+    
     def forward(self, layers):
         assert len(self.channels) == len(layers), \
             '{} vs {} layers'.format(len(self.channels), len(layers))
@@ -679,7 +710,10 @@ class IDAUp(nn.Module):
         y = []
         for i in range(1, len(layers)):
             node = getattr(self, 'node_' + str(i))
-            x = node(torch.cat([x, layers[i]], 1))
+            #print(f"x.shape={x.shape}, layers[{i}].shape={layers[i].shape}")
+            nr = self.padding(x, layers[i])
+            #x = node(torch.cat([x, layers[i]], 1))
+            x = node(torch.cat([x, nr], 1))
             y.append(x)
         return x, y
 
@@ -1010,7 +1044,7 @@ def multiclass_3d_nms(multi_bboxes,
         return bboxes, labels, depths, depths_uncertainty, dims, rots, cen_2ds
 
     if 1:
-        nms_cfg['iou_thr'] = 0.4
+        #nms_cfg['iou_thr'] = 0.4
         dets, keep = batched_nms(bboxes, scores, labels, nms_cfg)
     else:
         #keep = torchvision.ops.nms(crop_bboxes, crop_scores, self.args.iou)  # NMS

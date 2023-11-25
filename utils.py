@@ -372,12 +372,19 @@ def draw_3d_bbox(frame,
                 points_camera,
                 cam_calib,
                 cam_pose,
+                scale_dict=None,
                 cam_near_clip: float = 0.15,
                 line_color: tuple = (0, 255, 0),
                 line_width: int = 2,
                 corner_info: str = None):
     projpoints = get_3d_bbox_vertex(cam_calib, cam_pose, points_camera,
                                         cam_near_clip)
+
+    if scale_dict is not None and False:
+        for i in range(len(projpoints)):
+            for j in range(len(projpoints[i])):
+                projpoints[i][j][0] *= scale_dict['w']
+                projpoints[i][j][1] *= scale_dict['h']
 
     for p1, p2 in projpoints:
         cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])),

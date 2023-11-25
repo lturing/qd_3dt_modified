@@ -87,6 +87,7 @@ def build_model(args):
     params['test_cfg'] = cfg.test_cfg 
 
     '''
+    in checkpoint
     params['test_cfg']['track']={
         'type': 'Embedding3DBEVMotionUncertaintyTracker', 
         'init_score_thr': 0.8, 
@@ -112,6 +113,35 @@ def build_model(args):
         }
     '''
     
+    '''
+    in config file
+        type='Embedding3DBEVMotionUncertaintyTracker',
+        init_score_thr=0.8,
+        init_track_id=0,
+        obj_score_thr=0.5,
+        match_score_thr=0.5,
+        memo_tracklet_frames=10,
+        memo_backdrop_frames=1,
+        memo_momentum=0.8,
+        motion_momentum=0.8,
+        nms_conf_thr=0.5,
+        nms_backdrop_iou_thr=0.3,
+        nms_class_iou_thr=0.7,
+        loc_dim=7,
+        with_deep_feat=True,
+        with_cats=True,
+        with_bbox_iou=True,
+        with_depth_ordering=True,
+        lstm_name='VeloLSTM',
+        lstm_ckpt_name=
+        './checkpoints/batch8_min10_seq10_dim7_train_dla34_regress_pretrain_VeloLSTM_kitti_100_linear.pth',
+        track_bbox_iou='box3d',
+        depth_match_metric='motion',
+        tracker_model_name='DummyTracker',
+        match_metric='cycle_softmax',
+        match_algo='greedy'
+    
+    '''
     params['test_cfg']['use_3d_center'] = True 
     params['test_cfg']['track']['with_bbox_iou'] = True 
     params['test_cfg']['track']['with_deep_feat'] = True
@@ -125,6 +155,9 @@ def build_model(args):
     params['test_cfg']['track']['tracker_model_name'] = 'LSTM3DTracker'
     params['test_cfg']['track']['lstm_name'] = 'VeloLSTM'
     params['test_cfg']['track']['lstm_ckpt_name'] = args.lstm_checkpoint
+    params['test_cfg']['track']['loc_dim'] = 7
+    params['test_cfg']['track']['match_algo'] = 'greedy'
+
 
     print(f"params['test_cfg']['track']={params['test_cfg']['track']}")
 
@@ -187,27 +220,30 @@ def preprocess(img_path, img_norm, oxts, calib):
 
     old_height, old_width = img.shape[:2]
     
-    if True:
-        if img.shape[0] % (2**6) != 0:
-            new_height = (img.shape[0] // (2**6) + 1) * (2**6)
+    if 0:
+        if True:
+            if img.shape[0] % (2**6) != 0:
+                new_height = (img.shape[0] // (2**6) + 1) * (2**6)
+            else:
+                new_height = img.shape[0] // (2**6) * (2**6)
+            
+            if img.shape[1] % (2**6) != 0:
+                new_width = (img.shape[1] // (2**6) + 1) * (2**6)
+            else:
+                new_width = img.shape[1] // (2**6) * (2**6)
+
+            #print(f"img.shape={img.shape}, new_height={new_height}, new_width={new_width}")
+            img = cv2.resize(img, (new_width, new_height))
         else:
             new_height = img.shape[0] // (2**6) * (2**6)
-        
-        if img.shape[1] % (2**6) != 0:
-            new_width = (img.shape[1] // (2**6) + 1) * (2**6)
-        else:
             new_width = img.shape[1] // (2**6) * (2**6)
-
-        #print(f"img.shape={img.shape}, new_height={new_height}, new_width={new_width}")
-        img = cv2.resize(img, (new_width, new_height))
+            #print(f"img.shape={img.shape}, new_height={new_height}, new_width={new_width}")
+            img = img[:new_height, :new_width, :]
+            old_height = new_height 
+            old_width = new_width
     else:
-        new_height = img.shape[0] // (2**6) * (2**6)
-        new_width = img.shape[1] // (2**6) * (2**6)
-        #print(f"img.shape={img.shape}, new_height={new_height}, new_width={new_width}")
-        img = img[:new_height, :new_width, :]
-        old_height = new_height 
-        old_width = new_width
-    
+        new_width, new_height = old_width, old_height
+
     #print(f"new img.shape={img.shape}")
 
     #img = np.zeros((1485, 448, 3)).astype(np.float32)
