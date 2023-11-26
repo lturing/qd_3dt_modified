@@ -1,6 +1,6 @@
 # Self-defined ignore files
 *.mp4
-
+*.mp4*
 checkpoints
 work_dirs
 deprecated

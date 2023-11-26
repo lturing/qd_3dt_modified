@@ -32,9 +32,14 @@ def parse_args():
     parser.add_argument('--checkpoint', help='checkpoint file', default='/home/spurs/x/yolov8/qd-3dt/latest_kitti.pth')
     parser.add_argument('--lstm_checkpoint', help='track 3d checkpoint file', default='/home/spurs/x/yolov8/qd-3dt/batch8_min10_seq10_dim7_train_dla34_regress_pretrain_VeloLSTM_kitti_100_linear.pth')
     parser.add_argument('--out', help='output result file')
-    parser.add_argument('--data', help='the directory of the dataset', default='/home/spurs/dataset/kitti_raw/2011_10_03/2011_10_03_drive_0047_sync/image_02/data')
-    parser.add_argument('--pose', help='the pose directory', default='/home/spurs/dataset/kitti_raw/2011_10_03/2011_10_03_drive_0047_sync/oxts/data')
-    parser.add_argument('--cali', help='the calibration file directory', default='/home/spurs/dataset/kitti_raw/2011_10_03')
+    if 1:
+        parser.add_argument('--data', help='the directory of the dataset', default = '/home/spurs/dataset/kitti_raw/2011_09_29/2011_09_29_drive_0071_sync/image_02/data')
+        parser.add_argument('--pose', help='the pose directory', default='/home/spurs/dataset/kitti_raw/2011_09_29/2011_09_29_drive_0071_sync/oxts/data')
+        parser.add_argument('--cali', help='the calibration file directory', default='/home/spurs/dataset/kitti_raw/2011_09_29')
+    else:
+        parser.add_argument('--data', help='the directory of the dataset', default='/home/spurs/dataset/kitti_raw/2011_10_03/2011_10_03_drive_0047_sync/image_02/data')
+        parser.add_argument('--pose', help='the pose directory', default='/home/spurs/dataset/kitti_raw/2011_10_03/2011_10_03_drive_0047_sync/oxts/data')
+        parser.add_argument('--cali', help='the calibration file directory', default='/home/spurs/dataset/kitti_raw/2011_10_03')
     args = parser.parse_args()
 
     return args
