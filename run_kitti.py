@@ -277,7 +277,7 @@ def preprocess(img_path, img_norm, oxts, calib):
                     'scale_factor': {'h': old_height * 1.0 / new_height, 'w': old_width * 1.0 / new_width}, 
                     "mean": mean, 
                     "std": std,
-                    "pose": {"rotation": T_w_cam2[:3, :3], "position": T_w_cam2[:3, 3:4].reshape(-1)},
+                    "pose": {"rotation": T_w_cam2[:3, :3], "position": T_w_cam2[:3, 3]},
                     #"calib": np.hstack([calib['K_cam2'], np.asarray([0, 0, 1])])
                     "calib": calib['K_cam2']
                     
