@@ -47,7 +47,7 @@ python run_kitti.py --config quasi_dla34_dcn_3dmatch_multibranch_conv_dep_dim_ce
 ## demo(b站)
 - [单目2d和3d目标检测与跟踪(基于qd-3dt)](https://www.bilibili.com/video/BV1Jv411F7gW) 
 - [单目3d目标检测(基于qd-3dt)](https://www.bilibili.com/video/BV14G411S7Vt/)
-- [单目3d目标检测跟踪以及bev可视化]()
+- [单目3d目标检测跟踪以及bev可视化](https://www.bilibili.com/video/BV1594y1E7cT/)
 
 ## 感谢
 
