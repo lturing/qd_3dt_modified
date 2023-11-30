@@ -342,6 +342,23 @@ def computeboxes(roty, dim, loc):
     return corners
 
 
+def cameratoworld(corners, pose):
+    """
+    corners: (N, 3), N points on X(right)-Y(down)-Z(front) camera coordinate
+    pose: a class with position, rotation of the frame
+        rotation:  (3, 3), rotation along camera coordinates
+        position:  (3), translation of world coordinates
+
+    corners_global: (N, 3), N points on X(right)-Y(front)-Z(up) world coordinate (GTA)
+                    or X(front)-Y(left)-Z(up) velodyne coordinates (KITTI)
+    """
+    assert corners.shape[1] == 3, ("Shape ({}) not fit".format(corners.shape))
+    corners_global = corners.dot(pose.rotation.T) + \
+                     pose.position[np.newaxis]
+    return corners_global
+
+
+
 def get_vertex(box_dim):
     '''Get 3D bbox vertex (used for the upper volume iou calculation)
     Input:
@@ -372,19 +389,12 @@ def draw_3d_bbox(frame,
                 points_camera,
                 cam_calib,
                 cam_pose,
-                scale_dict=None,
                 cam_near_clip: float = 0.15,
                 line_color: tuple = (0, 255, 0),
                 line_width: int = 2,
                 corner_info: str = None):
     projpoints = get_3d_bbox_vertex(cam_calib, cam_pose, points_camera,
                                         cam_near_clip)
-
-    if scale_dict is not None and False:
-        for i in range(len(projpoints)):
-            for j in range(len(projpoints[i])):
-                projpoints[i][j][0] *= scale_dict['w']
-                projpoints[i][j][1] *= scale_dict['h']
 
     for p1, p2 in projpoints:
         cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])),
@@ -405,3 +415,54 @@ def draw_3d_bbox(frame,
             frame = draw_corner_info(frame, x1, y1, corner_info, line_color)
 
     return frame
+
+
+class Colors:
+    # Ultralytics color palette https://ultralytics.com/
+    def __init__(self):
+        # hex = matplotlib.colors.TABLEAU_COLORS.values()
+        hexs = (
+            "FF3838",
+            "FF9D97",
+            "FF701F",
+            "FFB21D",
+            "CFD231",
+            "48F90A",
+            "92CC17",
+            "3DDB86",
+            "1A9334",
+            "00D4BB",
+            "2C99A8",
+            "00C2FF",
+            "344593",
+            "6473FF",
+            "0018EC",
+            "8438FF",
+            "520085",
+            "CB38FF",
+            "FF95C8",
+            "FF37C7",
+        )
+        self.palette = [self.hex2rgb(f"#{c}") for c in hexs]
+        self.n = len(self.palette)
+
+    def __call__(self, i, bgr=False):
+        c = self.palette[int(i) % self.n]
+        return (c[2], c[1], c[0]) if bgr else c
+
+    @staticmethod
+    def hex2rgb(h):  # rgb order (PIL)
+        return tuple(int(h[1 + i : 1 + i + 2], 16) for i in (0, 2, 4))
+
+def generate_color(tid):
+    color = Colors()
+    rgb = color(tid)
+    rgb = [it / 255.0 for it in rgb]
+    return rgb 
+
+
+
+def generate_color_v1(tid):
+    h = (tid + 33) * 6364136223846793005 + 1442695040888963407
+    rgb = [(h & 0xFF)  / 255.0, ((h >> 4) & 0xFF) / 255.0, ((h >> 8) & 0xFF) / 255.0]
+    return rgb 

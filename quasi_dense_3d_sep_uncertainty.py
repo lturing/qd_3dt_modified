@@ -6,7 +6,7 @@ from pyquaternion import Quaternion
 from collections import defaultdict
 
 import mmcv
-from utils import bbox2result, track2results, imagetocamera_torch, cameratoworld_torch, alpha2yaw_torch, worldtocamera_torch, euler_to_quaternion, yaw2alpha_torch, cameratoimage_torch, quaternion_to_euler, computeboxes, draw_3d_bbox
+from utils import bbox2result, track2results, imagetocamera_torch, cameratoworld_torch, alpha2yaw_torch, worldtocamera_torch, euler_to_quaternion, yaw2alpha_torch, cameratoimage_torch, quaternion_to_euler, computeboxes, draw_3d_bbox, generate_color
 from module import DLA, DLAUp, RPNHead, SingleRoIExtractor, ConvFCBBoxHead, ConvFCBBox3DRotSepConfidenceHead, MultiPos3DTrackHead
 from tracker_3d.embedding_3d_bev_motion_uncertainty_tracker import Embedding3DBEVMotionUncertaintyTracker
 import cv2 
@@ -65,6 +65,9 @@ class QuasiDense3DSepUncertainty(nn.Module):
         self.spool = len(self.bbox_roi_extractor.featmap_strides)
         self.espool = len(self.embed_roi_extractor.featmap_strides)
         self.track_history = defaultdict(lambda: [])
+        self.tracklet_history = {}
+        self.colors = {}
+        self.frame_count = 0
 
 
     def init_weights(self, pretrained=None):
@@ -194,25 +197,16 @@ class QuasiDense3DSepUncertainty(nn.Module):
         det_bboxes, det_labels, det_depths, det_depths_uncertainty, det_dims, det_alphas, det_2dcs = \
             self.simple_test_bboxes(x, img_meta, proposal_list,
                                     self.test_cfg['rcnn'], rescale=rescale)
-
-        #print(f"det_bboxes.shape={det_bboxes.shape}, det_labels={det_labels}, det_alphas.shape={det_alphas.shape}")
-        #print(f"img.shape={img.shape}")
         
-        show_detect = False 
+        show_detect = False
         if show_detect:
-            if 0:
-                img = img[0].permute(1, 2, 0)
-                img = img.numpy() * img_meta[0]['std'] + img_meta[0]['mean']
-                img = img.astype(np.uint8)
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
             img = img_meta[0]['ori_img']
-
-            det_bboxes[:, 0:3:2] *= img_meta[0]['scale_factor']['w']
-            det_bboxes[:, 1:4:2] *= img_meta[0]['scale_factor']['h']
 
             pred = torch.cat([det_bboxes, det_labels.reshape(det_labels.shape[0], 1)], dim=1)
             tracker_outputs  = obj_tracker.update(pred.cpu(), img)
+
+            #print(f"track_outputs.length={len(tracker_outputs)}, pred.size={pred.shape[0]}")
+            
             for output in tracker_outputs:
                 bbox, track_id, category_id, score = (
                     output[:4],
@@ -224,6 +218,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 track = self.track_history[track_id]
                 x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
                 track.append(((x+w)/2, (y+h)/2))  # x, y center point
+
                 if len(track) > 60:  # retain 90 tracks for 90 frames
                     track.pop(0)
 
@@ -243,7 +238,8 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 thickness = 2
                 #print(f"x1={x1}, y1={y1}, x2={x2}, y2={y2}, s={s}")
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), thickness, lineType=cv2.LINE_AA)  # object box
-
+            
+            
             cv2.imshow("Tracking", img)
             cv2.waitKey(1)
 
@@ -251,7 +247,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
 
             #if cv2.waitKey(1) & 0xFF == ord("q"): cv2.destroyAllWindows()
 
-        track_flag = True 
+        track_flag = True
         if track_flag:
             bbox_results = bbox2result(det_bboxes, det_labels,
                                     self.bbox_head.num_classes)
@@ -292,7 +288,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 for det_yaw in det_yaws:
                     yaw_quat = Quaternion(
                         axis=[0, 1, 0], radians=det_yaw.cpu().numpy())
-                    rotation_world = cam_rot_quat * yaw_quat
+                    rotation_world = cam_rot_quat * yaw_quat # T_w_obj
                     if rotation_world.z < 0:
                         rotation_world *= -1
                     roll_world, pitch_world, yaw_world = quaternion_to_euler(
@@ -304,10 +300,15 @@ class QuasiDense3DSepUncertainty(nn.Module):
 
                 det_yaws_world = rotation.new_tensor(
                     np.array(quat_det_yaws_world['yaw_world'])[:, None])
+                
+                det_roll_pitch_world = rotation.new_tensor(
+                    np.array(quat_det_yaws_world['roll_pitch']))
+
                 det_boxes_3d = torch.cat(
                     [corners_global, det_yaws_world, det_dims], dim=1)
             else:
                 det_boxes_3d = det_bboxes.new_zeros([det_bboxes.shape[0], 7])
+                det_roll_pitch_world = det_bboxes.new_zeros([det_bboxes.shape[0], 2])
 
             match_bboxes, match_labels, match_boxes_3ds, ids, inds, valids = \
                 self.tracker.match(
@@ -389,6 +390,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
             else:
                 track_2dcs = None
             track_ids = ids[track_inds]
+
             track_results = track2results(track_bboxes, track_labels, track_ids)
             outputs = dict(
                 bbox_results=bbox_results,
@@ -398,10 +400,11 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 alpha_results=track_alphas,
                 cen_2ds_results=track_2dcs,
                 track_results=track_results)
-            
+
             #print(f"det_bboxes.shape={det_bboxes.shape}, track_2dcs.shape={track_2dcs.shape}, track_alphas={track_alphas.shape}, track_bboxes.shape={track_bboxes.shape}")
             #return outputs, use_3d_center
 
+            # tracklet_history
             show_detect = True 
             if show_detect:
                 if 0:
@@ -452,24 +455,42 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 yaws = match_yaws.numpy()
                 locs = track_corners_cam.numpy()
                 scale_dict = img_meta[0]['scale_factor']
+                self.frame_count += 1
                 for i in range(track_dims.shape[0]):
                     roty = [yaws[i][0]]
                     dim = dims[i]
                     loc = locs[i]
+                    tid = int(track_ids[i])
+                    assert tid > -1
                     #det_bboxes[:, 0:3:2] *= img_meta[0]['scale_factor']['w']
                     #det_bboxes[:, 1:4:2] *= img_meta[0]['scale_factor']['h']
                     #det_2dcs[:, 0] *= img_meta[0]['scale_factor']['w']
                     #det_2dcs[:, 1] *= img_meta[0]['scale_factor']['h']
 
-                    p3ds_camera = computeboxes(roty, dim, loc)
+                    p3ds_camera = computeboxes(roty, dim, loc) # (8, 3)
+                    
+                    # position
+                    traslation = position.cpu().numpy()
+                    rotation = r_camera_to_world # T_w_c
+                    p3ds_world = p3ds_camera.dot(rotation.T) + traslation[np.newaxis] # 8 * 3
+                    loc_world = loc.reshape(-1, 3).dot(rotation.T) + traslation[np.newaxis]
+                    loc_world = loc_world.reshape(-1)
+
+                    if tid not in self.tracklet_history:
+                        self.tracklet_history[tid] = []
+                        self.colors[tid] = generate_color(tid)
+                    
+                    self.tracklet_history[tid].append([loc_world, p3ds_world, self.colors[tid], self.frame_count])
+
                     cam_pose = None 
-                    draw_3d_bbox(img, p3ds_camera, projection, cam_pose, scale_dict)
+                    draw_3d_bbox(img, p3ds_camera, projection, cam_pose, line_color=[int(it * 255) for it in self.colors[tid][::-1]])
 
                 # draw_3d_bbox
                 # get_3d_bbox_vertex
-                cv2.imshow("Tracking", img)
-                cv2.waitKey(1)
 
-            
+                if False:
+                    cv2.imshow("Tracking", img)
+                    cv2.waitKey(1)
+
             return img
 

@@ -171,6 +171,7 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
         self.num_tracklets = init_track_id
         self.tracklets = dict()
         self.backdrops = []
+        
 
     @property
     def empty(self):
@@ -468,7 +469,7 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
                 scores_feat = scores_iou.new_ones(scores_iou.shape)
 
             # Match with depth ordering
-            if self.with_depth_ordering:
+            if self.with_depth_ordering and False:
 
                 def compute_boxoverlap_with_depth(obsv_boxes_3d, memo_boxes_3d,
                                                   memo_vs):
@@ -564,8 +565,11 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
             else:
                 scores_cats = scores_iou.new_ones(scores_iou.shape)
 
+            #print(f"scores_iou.max={torch.max(scores_iou)}, scores_depth.max={torch.max(scores_depth)}, scores_feat.max={torch.max(scores_feat)}")
             scores = self.bbox_affinity_weight * scores_iou * scores_depth + \
                 self.feat_affinity_weight * scores_feat
+            
+            #print(f"scores_1.max={torch.max(scores)}")
             scores /= (self.bbox_affinity_weight + self.feat_affinity_weight)
             scores *= (scores_iou > 0.0).float()
             scores *= (scores_depth > 0.0).float()
@@ -577,6 +581,8 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
                     conf, memo_ind = torch.max(scores[i, :], dim=0)
                     tid = memo_ids[memo_ind]
                     # Matching confidence
+
+                    #print(f"tid={tid}, conf={conf}, match_score_thr={self.match_score_thr}, bboxes[i, -1]={bboxes[i, -1]}, depth_uncertainty[i]={depth_uncertainty[i]}, obj_score_thr={self.obj_score_thr}")
                     if conf > self.match_score_thr:
                         # Update existing tracklet
                         if tid > -1:
@@ -642,7 +648,7 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
             self.num_tracklets + num_news,
             dtype=torch.long)
         self.num_tracklets += num_news
-
+        #print(f"len(bboxes)={len(bboxes)}, num_news={num_news}")
         self.update_memo(ids, bboxes, boxes_3d, depth_uncertainty, embeds,
                          labels, cur_frame)
 
@@ -657,5 +663,5 @@ class Embedding3DBEVMotionUncertaintyTracker(object):
             print(
                 f"Updt: {update_boxes_3d.shape}\tUpdt ID: {update_ids.cpu().numpy()}\n"
                 f"{update_boxes_3d.cpu().numpy()}")
-
+        
         return update_bboxes, update_labels, update_boxes_3d, update_ids, inds, valids

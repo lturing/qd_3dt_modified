@@ -13,7 +13,10 @@ import cv2
 import numpy as np
 from tqdm import tqdm 
 from gps_to_xyz import load_oxts_packets_and_poses, load_calib
-
+from utils import computeboxes
+from pyquaternion import Quaternion
+from pangolin_viewer import Viewer 
+import threading
 
 kitti_mapping = {
     'pedestrian': 1,
@@ -32,7 +35,7 @@ def parse_args():
     parser.add_argument('--checkpoint', help='checkpoint file', default='/home/spurs/x/yolov8/qd-3dt/latest_kitti.pth')
     parser.add_argument('--lstm_checkpoint', help='track 3d checkpoint file', default='/home/spurs/x/yolov8/qd-3dt/batch8_min10_seq10_dim7_train_dla34_regress_pretrain_VeloLSTM_kitti_100_linear.pth')
     parser.add_argument('--out', help='output result file')
-    if 1:
+    if 0:
         parser.add_argument('--data', help='the directory of the dataset', default = '/home/spurs/dataset/kitti_raw/2011_09_29/2011_09_29_drive_0071_sync/image_02/data')
         parser.add_argument('--pose', help='the pose directory', default='/home/spurs/dataset/kitti_raw/2011_09_29/2011_09_29_drive_0071_sync/oxts/data')
         parser.add_argument('--cali', help='the calibration file directory', default='/home/spurs/dataset/kitti_raw/2011_09_29')
@@ -322,19 +325,28 @@ if __name__ == "__main__":
             tracker_config_path=tracker_config_path,
         )
     
+    myViewer = Viewer(w=size[0], h=size[1])
     #print(f"k_cam2={calib['K_cam2']}")
     for i, ipath in enumerate(tqdm(imgs)):
         img, img_info = preprocess(ipath, img_norm, oxts, calib)
         with torch.no_grad():
             img = model.simple_test(img, img_info, obj_tracker=tracker_module)
             videoWriter.write(img)
-        
+            myViewer.update(model.tracklet_history, img_info[0]['pose'], img, model.frame_count)
+
         if 0xFF == ord("q"):
             break 
 
         if i == 0:
             print(f"img.shape={img_info[0]['img_shape']}, ori_img.shape={img_info[0]['ori_img'].shape[:2]}")
+        
+        
+        #if i == 1:
+        #    input('input any to continue')
     
     videoWriter.release()
+    input("input any to quit!")
+    myViewer.shutdown()
+    
     print('sucess')
 
