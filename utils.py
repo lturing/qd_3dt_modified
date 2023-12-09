@@ -124,9 +124,9 @@ def cameratoimage_torch(corners, projection, invalid_value=-1000):
     """
     assert corners.shape[1] == 3, "Shape ({}) not fit".format(corners.shape)
 
-    #points = torch.cat([corners, corners.new_ones((corners.shape[0], 1))], dim=1).mm(projection.t())
+    points = torch.cat([corners, corners.new_ones((corners.shape[0], 1))], dim=1).mm(projection.t())
 
-    points = corners.mm(projection.t())
+    #points = corners.mm(projection.t())
 
     # [x, y, z] -> [x/z, y/z]
     mask = points[:, 2:3] > 0
@@ -176,8 +176,8 @@ def cameratoimage(corners, projection, invalid_value=-1000):
     """
     assert corners.shape[1] == 3, "Shape ({}) not fit".format(corners.shape)
 
-    #points = np.hstack([corners, np.ones((corners.shape[0], 1))]).dot(projection.T)
-    points = corners.dot(projection.T)
+    points = np.hstack([corners, np.ones((corners.shape[0], 1))]).dot(projection.T)
+    #points = corners.dot(projection.T)
 
     # [x, y, z] -> [x/z, y/z]
     mask = points[:, 2:3] > 0

@@ -237,10 +237,10 @@ def load_calib_cam_to_cam(velo_to_cam_filepath, cam_to_cam_filepath):
     data['T_cam3_velo'] = T3.dot(R_rect_00.dot(T_cam0unrect_velo))
 
     # Compute the camera intrinsics
-    data['K_cam0'] = P_rect_00[0:3, 0:3]
-    data['K_cam1'] = P_rect_10[0:3, 0:3]
-    data['K_cam2'] = P_rect_20[0:3, 0:3]
-    data['K_cam3'] = P_rect_30[0:3, 0:3]
+    data['K_cam0'] = P_rect_00 #[0:3, 0:3]
+    data['K_cam1'] = P_rect_10 #[0:3, 0:3]
+    data['K_cam2'] = P_rect_20 #[0:3, 0:3]
+    data['K_cam3'] = P_rect_30 #[0:3, 0:3]
 
     # Compute the stereo baselines in meters by projecting the origin of
     # each camera frame into the velodyne frame and computing the distances
