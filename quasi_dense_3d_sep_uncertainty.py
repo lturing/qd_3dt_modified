@@ -5,11 +5,12 @@ from addict import Dict
 from pyquaternion import Quaternion
 from collections import defaultdict
 
-import mmcv
 from utils import bbox2result, track2results, imagetocamera_torch, cameratoworld_torch, alpha2yaw_torch, worldtocamera_torch, euler_to_quaternion, yaw2alpha_torch, cameratoimage_torch, quaternion_to_euler, computeboxes, draw_3d_bbox, generate_color
 from module import DLA, DLAUp, RPNHead, SingleRoIExtractor, ConvFCBBoxHead, ConvFCBBox3DRotSepConfidenceHead, MultiPos3DTrackHead
 from tracker_3d.embedding_3d_bev_motion_uncertainty_tracker import Embedding3DBEVMotionUncertaintyTracker
 import cv2 
+
+from moma_m3t.motion_tracker import MotionTracker
 
 class QuasiDense3DSepUncertainty(nn.Module):
 
@@ -59,6 +60,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
         self.test_cfg = test_cfg
         test_cfg['track'].pop('type')
         self.tracker = Embedding3DBEVMotionUncertaintyTracker(**test_cfg['track'])
+        self.moma_tracker = MotionTracker(init_track_id = 0)
 
         #self.init_weights(pretrained=pretrained)
 
@@ -177,16 +179,6 @@ class QuasiDense3DSepUncertainty(nn.Module):
         # init tracker
         frame_ind = img_meta[0].get('frame_id', -1)
         use_3d_center = self.test_cfg.get('use_3d_center', False)
-
-        if False:
-            if self.tracker is None:
-                self.tracker = mmcv.runner.obj_from_dict(self.test_cfg.track,
-                                                        tracker)
-            elif img_meta[0].get('first_frame', False):
-                num_tracklets = self.tracker.num_tracklets
-                del self.tracker
-                self.test_cfg.track.init_track_id = num_tracklets
-                self.tracker = mmcv.runner.obj_from_dict(self.test_cfg.track, tracker)
 
         x = self.extract_feat(img)
         # rpn
@@ -310,17 +302,27 @@ class QuasiDense3DSepUncertainty(nn.Module):
                 det_boxes_3d = det_bboxes.new_zeros([det_bboxes.shape[0], 7])
                 det_roll_pitch_world = det_bboxes.new_zeros([det_bboxes.shape[0], 2])
 
-            match_bboxes, match_labels, match_boxes_3ds, ids, inds, valids = \
-                self.tracker.match(
-                    bboxes=det_bboxes,
-                    labels=det_labels,
-                    boxes_3d=det_boxes_3d,
-                    depth_uncertainty=det_depths_uncertainty,
-                    position=position,
-                    rotation=rotation,
-                    embeds=embeds,
-                    cur_frame=frame_ind,
-                    pure_det=pure_det)
+            if 0:
+                match_bboxes, match_labels, match_boxes_3ds, ids, inds, valids = \
+                    self.tracker.match(
+                        bboxes=det_bboxes,
+                        labels=det_labels,
+                        boxes_3d=det_boxes_3d,
+                        depth_uncertainty=det_depths_uncertainty,
+                        position=position,
+                        rotation=rotation,
+                        embeds=embeds,
+                        cur_frame=frame_ind,
+                        pure_det=pure_det)
+            else:
+                match_bboxes, match_labels, match_boxes_3ds, ids, inds, valids = \
+                    self.moma_tracker.match(
+                        bboxes=det_bboxes,
+                        labels=det_labels,
+                        boxes_3d=det_boxes_3d,
+                        position=position,
+                        rotation=rotation,
+                        cur_frame=frame_ind,)
 
             match_yaws = []
             if det_depths is not None and det_2dcs is not None:

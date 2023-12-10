@@ -1,5 +1,11 @@
 ## **运行(环境ubuntu20)**
-单目2d和3d目标检测和跟踪以及bev可视化。qd-3dt相比常见的目标检测器，引入基于lstm的运动模型，同时实现跨帧间目标的信息共享，进一步优化目标检测器的结果，使得检测更鲁棒。           
+update at 2023-12-10    
+add MoMA-M3T
+
+<div align=center><img src="./images/moma_m3t_1.jpg" width="90%"/></div>
+<div align=center><img src="./images/moma_m3t_2.jpg" width="90%"/></div>
+
+单目2d和3d目标检测和跟踪以及bev可视化。qd-3dt相比常见的目标检测器，引入基于lstm的运动模型实现3d目标跟踪，同时实现跨帧间目标的信息共享，进一步优化目标检测器的结果，使得检测更鲁棒。           
 参考官方代码的基础下做了以下调整：
 - 简化代码，保留核心部分
 - 支持任意分辨率的图像输入
@@ -24,6 +30,8 @@ cd Pangolin
 cmake -B build -DPython_EXECUTABLE=`which python3` 
 # cmake -B build -DCMAKE_INSTALL_PREFIX=/home/spurs/installed -DPython_EXECUTABLE=`which python3`
 cmake --build build -t pypangolin_pip_install
+# uninstall 
+# cmake --build build -t pypangolin_pip_uninstall
 
 # 模型参数下载
 百度链接(kitti): https://pan.baidu.com/s/1-ElUcDVL-YOOxrLCgdDmBA 提取码: bt3g
@@ -53,3 +61,4 @@ python run_kitti.py --config quasi_dla34_dcn_3dmatch_multibranch_conv_dep_dim_ce
 
 - [qd-3dt](https://github.com/SysCV/qd-3dt)
 - [pykitti](https://github.com/utiasSTARS/pykitti)
+- [MoMA-M3T](https://github.com/KuanchihHuang/MoMA-M3T)
