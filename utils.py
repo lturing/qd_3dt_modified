@@ -297,6 +297,34 @@ def get_3d_bbox_vertex(cam_calib, cam_pose, points3d, cam_near_clip=0.15):
     return points
 
 
+def get2dBox(cam_calib, cam_pose, points_camera, imgsize, cam_near_clip=0.15):
+    projpoints = get_3d_bbox_vertex(cam_calib, cam_pose, points_camera, cam_near_clip)
+    if len(projpoints) < 2:
+        print('less than 2 points')
+        return False 
+
+    projpoints = np.vstack(projpoints)[:, :2]
+    projpoints = projpoints.reshape(-1, 2)
+    minx = int(projpoints[:, 0].min() + 0.5)
+    maxx = int(projpoints[:, 0].max() + 0.5)
+    miny = int(projpoints[:, 1].min() + 0.5)
+    maxy = int(projpoints[:, 1].max() + 0.5)
+
+    minx = max(0, minx)
+    maxx = min(maxx, imgsize[1])
+
+    miny = max(0, miny)
+    maxy = min(maxy, imgsize[0])
+
+    if (minx >= maxx | miny >= maxy):
+        print(f"minx={minx}, maxx={maxx}, miny={miny}, maxy={maxy}")
+        return False 
+    
+    box = [minx, miny, maxx - minx, maxy - miny]
+
+    return box 
+    
+
 
 def construct2dlayout(trks, dims, rots, cam_calib, pose, cam_near_clip=0.15):
     depths = []

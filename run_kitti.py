@@ -276,6 +276,10 @@ def preprocess(img_path, img_norm, oxts, calib):
     T_imu_cam2 = calib['T_imu_cam2']
     T_w_cam2 = np.matmul(T_w_imu, T_imu_cam2)
     
+    des = os.path.abspath(os.path.join(img_path, '../..'))
+    des = os.path.join(des, 'result')
+    os.makedirs(des, exist_ok=True)
+    result = os.path.join(des, name + '.txt')
     img_info = [{
                     'img_shape': [img_shape[2], img_shape[3]], 
                     'ori_img' : ori_img, 
@@ -284,8 +288,8 @@ def preprocess(img_path, img_norm, oxts, calib):
                     "std": std,
                     "pose": {"rotation": T_w_cam2[:3, :3], "position": T_w_cam2[:3, 3]},
                     #"calib": np.hstack([calib['K_cam2'], np.asarray([0, 0, 1])])
-                    "calib": calib['K_cam2']
-                    
+                    "calib": calib['K_cam2'],
+                    "result": result
                 }]
 
     return img, img_info
@@ -341,7 +345,6 @@ if __name__ == "__main__":
 
         if i == 0:
             print(f"img.shape={img_info[0]['img_shape']}, ori_img.shape={img_info[0]['ori_img'].shape[:2]}")
-        
         
         #if i == 1:
         #    input('input any to continue')
