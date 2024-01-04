@@ -498,7 +498,7 @@ class QuasiDense3DSepUncertainty(nn.Module):
                     draw_3d_bbox(img, p3ds_camera, projection, cam_pose, line_color=[int(it * 255) for it in self.colors[tid][::-1]])
 
                     # # [cuboid_center(3), yaw, cuboid_scale(3), [x1 y1 w h]], prob track_id # in camera's coordinate
-                    f.write(' '.join(map(str, [loc[0], loc[1], loc[1], roty[0], dim[0], dim[1], dim[2], box[0], box[1], box[2], box[3], track_bboxes[i][4], tid])) + '\n')
+                    f.write(' '.join(map(str, [loc[0], loc[1], loc[2], roty[0], dim[0], dim[1], dim[2], box[0], box[1], box[2], box[3], track_bboxes[i][4], tid])) + '\n')
                 f.close()
                 # draw_3d_bbox
                 # get_3d_bbox_vertex
